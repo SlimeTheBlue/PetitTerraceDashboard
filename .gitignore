@@ -1,0 +1,24 @@
+**/bin/
+**/obj/
+artifacts/
+*.user
+# Machine-local launchers, source references and generated deliverables
+*.lnk
+*.exe
+*.dll
+*.pdb
+*.log
+*.tmp
+*.zip
+/*.png
+assets/dashboard-icon.png
+assets/dashboard.ico
+assets/petit_dash.ico
+assets/petit_dash_compact.ico
+# User/business data stays outside Git
+*.xlsx
+*.xlsm
+*.xls
+*.csv
+*.db
+*.sqlite*

@@ -23,7 +23,9 @@ public static class Windows
  [DllImport("user32.dll")] static extern bool SetWindowPos(nint hwnd,nint after,int x,int y,int width,int height,uint flags);
  [DllImport("user32.dll")] static extern bool ShowWindow(nint hwnd,int command);
  [DllImport("user32.dll")] static extern bool SetForegroundWindow(nint hwnd);
- [DllImport("user32.dll")] static extern bool FlashWindow(nint hwnd,bool invert);
+ [DllImport("user32.dll")] static extern nint GetForegroundWindow();
+ [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
+ [DllImport("user32.dll")] static extern bool AttachThreadInput(uint from,uint to,bool attach);
  [DllImport("user32.dll",SetLastError=true)] static extern bool SetProcessDpiAwarenessContext(nint context);
  [DllImport("user32.dll",SetLastError=true)] static extern nint SetThreadDpiAwarenessContext(nint context);
  public static void EnablePerMonitorDpi()
@@ -50,7 +52,25 @@ public static class Windows
  }
  public static void MaximizeOnPrimary(nint hwnd)
  { var(a,_)=Primary();ShowWindow(hwnd,9);SetWindowPos(hwnd,0,a.Left,a.Top,a.Right-a.Left,a.Bottom-a.Top,0x14);ShowWindow(hwnd,3); }
- public static void Activate(Window window) { window.Show();PlaceDashboard(window);window.Activate();var hwnd=new WindowInteropHelper(window).Handle;if(!SetForegroundWindow(hwnd))FlashWindow(hwnd,true); }
+ public static void Activate(Window window)
+ {
+  window.ShowInTaskbar=true;
+  window.Show();
+  if(window.WindowState==WindowState.Minimized)window.WindowState=WindowState.Normal;
+  PlaceDashboard(window);
+  var hwnd=new WindowInteropHelper(window).Handle;
+  window.Activate();window.Focus();SetForegroundWindow(hwnd);
+  if(GetForegroundWindow()==hwnd)return;
+  // Pulse only on failed activation; never leave the dashboard always on top.
+  var wasTopmost=window.Topmost;
+  try {window.Topmost=true;window.Activate();SetForegroundWindow(hwnd);}
+  finally {window.Topmost=wasTopmost;}
+  if(GetForegroundWindow()==hwnd)return;
+  var foreground=GetForegroundWindow();var foregroundThread=GetWindowThreadProcessId(foreground,out _);var currentThread=GetCurrentThreadId();
+  var attached=foregroundThread!=0&&foregroundThread!=currentThread&&AttachThreadInput(currentThread,foregroundThread,true);
+  try {window.Activate();window.Focus();SetForegroundWindow(hwnd);}
+  finally {if(attached)AttachThreadInput(currentThread,foregroundThread,false);}
+ }
  public static Dictionary<int,int>? Parents()
  {
   var result=new Dictionary<int,int>();var snapshot=CreateToolhelp32Snapshot(2,0);if(snapshot==0||snapshot==-1)return null;
